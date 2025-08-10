@@ -1,9 +1,10 @@
 "use client";
 import { useParams } from "next/navigation";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Trace } from "@/app/models/trace";
-import { getPropertyTrace } from "@/app/lib/api/propertyTrace";
+import { useEffect, useRef, useState } from "react";
+import { Trace } from "@/models/trace";
+
+import { getPropertyTrace } from "@/services/propertyService";
+import BackButton from "@/components/BackButton";
 
 export default function PropertyTracePage() {
   const { id } = useParams();
@@ -11,7 +12,11 @@ export default function PropertyTracePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const hasFetched = useRef(false);
+
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     window.scrollTo(0, 0);
 
     if (!id) return;
@@ -20,7 +25,7 @@ export default function PropertyTracePage() {
       try {
         setLoading(true);
         const data = await getPropertyTrace(id as string);
-        setTraces(data);
+        setTraces(data?.data);
       } catch (err) {
         setError("No se pudo cargar el historial.");
       } finally {
@@ -86,26 +91,7 @@ export default function PropertyTracePage() {
         )}
 
         <div className="mt-8">
-          <Link
-            href={`/propiedad/${id}`}
-            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-2 rounded shadow-md transition"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15.75 19.5L8.25 12l7.5-7.5"
-              />
-            </svg>
-            Volver al detalle
-          </Link>
+            <BackButton href={`/propiedad/${id}`} label="Volver al detalle" className="flex"/>
         </div>
       </div>
     </div>

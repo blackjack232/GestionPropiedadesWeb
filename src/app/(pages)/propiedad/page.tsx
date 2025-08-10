@@ -1,8 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { getPropertiesServer } from "@/app/lib/api/property";
-import { Property } from "@/app/models/property";
+
+import { Property } from "@/models/property";
+import { getPropertiesServer } from "@/services/propertyService";
+import { Paginator } from "@/components/Paginator";
+
 
 export default function PropiedadesPage() {
   const [inputs, setInputs] = useState({
@@ -45,8 +48,11 @@ export default function PropiedadesPage() {
     }
   };
 
-  // Buscar la primera vez
+  const hasFetched = useRef(false);
+
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     handleBuscar(pageNumber);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -126,7 +132,10 @@ export default function PropiedadesPage() {
             key={prop.idProperty}
             className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-1"
             onClick={() => {
-              localStorage.setItem("propiedad-seleccionada", JSON.stringify(prop));
+              localStorage.setItem(
+                "propiedad-seleccionada",
+                JSON.stringify(prop)
+              );
             }}
           >
             <img
@@ -149,27 +158,13 @@ export default function PropiedadesPage() {
       </div>
 
       {/* Paginación */}
-      {!loading && totalPages >= 1 && (
-        <div className="flex justify-center items-center gap-4 mt-8">
-          <button
-            onClick={handlePrev}
-            disabled={pageNumber === 1}
-            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
-          >
-            Anterior
-          </button>
-          <span>
-            Página {pageNumber} de {totalPages}
-          </span>
-          <button
-            onClick={handleNext}
-            disabled={pageNumber === totalPages}
-            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
-          >
-            Siguiente
-          </button>
-        </div>
-      )}
+      <Paginator
+        loading={loading}
+        pageNumber={pageNumber}
+        totalPages={totalPages}
+        handlePrev={handlePrev}
+        handleNext={handleNext}
+      />
     </div>
   );
 }

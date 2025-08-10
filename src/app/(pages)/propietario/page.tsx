@@ -1,11 +1,12 @@
 "use client";
-import Propietario from "@/app/models/propietario";
+import Owner from "@/models/owner";
+import Propietario from "@/models/owner";
 
 import { useEffect, useState } from "react";
 
 
 export default function OwnersPage() {
-  const [owners, setOwners] = useState<Propietario[]>([]);
+  const [owners, setOwners] = useState<Owner[]>([]);
   const [form, setForm] = useState({ id: "", name: "", address: "", photo: null as File | null });
 
   const fetchOwners = async () => {

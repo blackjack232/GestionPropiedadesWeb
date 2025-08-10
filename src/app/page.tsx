@@ -1,53 +1,60 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-
-// Imágenes del slider
-const heroImages = [
-  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1572120360610-d971b9d7767c?auto=format&fit=crop&w=1950&q=80",
-];
-
-// Propiedades destacadas
-const featuredProperties = [
-  {
-    name: "Casa Moderna en Bogotá",
-    img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
-    price: 1200000000,
-  },
-  {
-    name: "Apartamento en Medellín",
-    img: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
-    price: 850000000,
-  },
-  {
-    name: "Finca en Nariño",
-    img: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80",
-    price: 600000000,
-  },
-  {
-    name: "Penthouse en Cartagena",
-    img: "https://images.unsplash.com/photo-1572120360610-d971b9d7767c?auto=format&fit=crop&w=1950&q=80",
-    price: 2000000000,
-  },
-  {
-    name: "Casa Campestre en Cali",
-    img: "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80",
-    price: 950000000,
-  },
-];
+import { Property } from "../models/property";
+import { getPropertiesServer } from "../services/propertyService";
+import { HERO_IMAGES } from "../config/Constants";
+import { Paginator } from "@/components/Paginator";
 
 export default function HomePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
+  const handleBuscar = async (page = 1) => {
+    setLoading(true);
+    try {
+      const response = await getPropertiesServer({
+        pageNumber: page,
+        pageSize: 10,
+      });
+
+      const {
+        pageNumber: pg,
+        totalPages,
+        data: propiedadesArr,
+      } = response.data;
+      setFeaturedProperties(propiedadesArr);
+      setPageNumber(pg);
+      setTotalPages(totalPages);
+    } catch (err) {
+      console.error("Error cargando propiedades", err);
+    } finally {
+      setLoading(false);
+    }
+  };
   // Cambio automático cada 5 segundos
   useEffect(() => {
+    handleBuscar(pageNumber);
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % heroImages.length);
+      setCurrentIndex((prev) => (prev + 1) % HERO_IMAGES.length);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handlePrev = () => {
+    if (pageNumber > 1) {
+      handleBuscar(pageNumber - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (pageNumber < totalPages) {
+      handleBuscar(pageNumber + 1);
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -57,7 +64,7 @@ export default function HomePage() {
           className="flex transition-transform duration-1000 ease-in-out h-full"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
-          {heroImages.map((img, idx) => (
+          {HERO_IMAGES.map((img, idx) => (
             <div
               key={idx}
               className="w-full flex-shrink-0 h-full bg-cover bg-center relative"
@@ -87,13 +94,6 @@ export default function HomePage() {
                     </svg>
                     Buscar Propiedades
                   </Link>
-
-                  {/* <Link
-                    href="/propietario"
-                    className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-8 py-3 rounded shadow-md transition transform hover:scale-105"
-                  >
-                    👤 Ver Propietarios
-                  </Link> */}
                 </div>
               </div>
             </div>
@@ -102,7 +102,7 @@ export default function HomePage() {
 
         {/* Indicadores */}
         <div className="absolute bottom-4 w-full flex justify-center gap-2 z-20">
-          {heroImages.map((_, idx) => (
+          {HERO_IMAGES.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
@@ -123,8 +123,14 @@ export default function HomePage() {
           {featuredProperties.map((prop, i) => (
             <Link
               key={i}
-              href={`/propiedad/${i + 1}`} // Redirige a detalles
+              href={`/propiedad/${prop.idProperty}`} // Redirige a detalles
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition transform hover:scale-105"
+              onClick={() => {
+                localStorage.setItem(
+                  "propiedad-seleccionada",
+                  JSON.stringify(prop)
+                );
+              }}
             >
               <div className="relative group">
                 <div className="relative">
@@ -133,7 +139,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <img
-                  src={prop.img}
+                  src={prop.imageUrls[0] ?? "/placeholder.jpg"}
                   alt={prop.name}
                   className="h-56 w-full object-cover group-hover:opacity-90 transition duration-300"
                 />
@@ -154,12 +160,14 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-
-      {/* FOOTER */}
-      <footer className="bg-gray-100 py-6 text-center text-sm text-gray-600 mt-auto">
-        &copy; {new Date().getFullYear()} Million Luxury Real Estate. Todos los
-        derechos reservados.
-      </footer>
+      {/* Paginación */}
+      <Paginator
+        loading={loading}
+        pageNumber={pageNumber}
+        totalPages={totalPages}
+        handlePrev={handlePrev}
+        handleNext={handleNext}
+      />
     </div>
   );
 }
