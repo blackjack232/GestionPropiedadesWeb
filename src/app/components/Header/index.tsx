@@ -50,7 +50,7 @@ export default function Header() {
             <Link href="/" className="text-white hover:text-yellow-400 transition">
               Inicio
             </Link>
-            <Link href="/propiedades" className="text-white hover:text-yellow-400 transition">
+            <Link href="/propiedad" className="text-white hover:text-yellow-400 transition">
               Propiedades
             </Link>
             {/* <Link href="/propietarios" className="text-white hover:text-yellow-400 transition">

@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { getOwnerById } from "@/app/lib/api/owner";
 
 interface Propietario {
   name: string;
@@ -17,7 +18,7 @@ interface Propiedad {
   price: number;
   year: number;
   codeInternal: string;
-  images: string[];
+  imageUrls: string[];
   owner: Propietario;
 }
 
@@ -29,32 +30,25 @@ export default function PropiedadDetalle() {
   // Estado para imagen seleccionada
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  const hasFetched = useRef(false);
+
   useEffect(() => {
-    if (carruselRef.current) {
-      carruselRef.current.scrollLeft = 0;
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    const storedData = localStorage.getItem("propiedad-seleccionada");
+    if (storedData) {
+      const prop = JSON.parse(storedData);
+
+      getOwnerById(prop.idOwner)
+        .then((res) => {
+          setPropiedad({ ...prop, owner: res.data });
+        })
+        .catch((err) => {
+          console.error("Error cargando propietario:", err);
+          setPropiedad(prop);
+        });
     }
-
-    const propiedadDemo: Propiedad = {
-      id: "1",
-      name: "Casa Moderna en Bogotá",
-      address: "Calle 123 #45-67, Bogotá",
-      price: 1200000000,
-      year: 2023,
-      codeInternal: "INT-001",
-      images: [
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80",
-      ],
-      owner: {
-        name: "Juan Pérez",
-        address: "Calle Falsa 123, Bogotá",
-        birthday: "1985-05-15",
-        photo: "https://randomuser.me/api/portraits/men/32.jpg",
-      },
-    };
-
-    setPropiedad(propiedadDemo);
   }, [id]);
 
   if (!propiedad) {
@@ -76,19 +70,21 @@ export default function PropiedadDetalle() {
         </h1>
 
         {/* Carrusel de imágenes */}
-        <div
-          ref={carruselRef}
-          className="relative w-full overflow-x-auto flex gap-4 pb-4"
-        >
-          {propiedad.images?.map((img, i) => (
-            <img
-              key={i}
-              src={img}
-              alt={`Imagen ${i + 1}`}
-              className="w-[400px] h-[250px] object-cover rounded-lg shadow-md hover:scale-105 transition-transform duration-300 cursor-pointer"
-              onClick={() => setSelectedImage(img)}
-            />
-          ))}
+        <div className="w-full flex justify-center">
+          <div
+            ref={carruselRef}
+            className="overflow-x-auto inline-flex gap-4 pb-4"
+          >
+            {propiedad.imageUrls?.map((img, i) => (
+              <img
+                key={i}
+                src={img}
+                alt={`Imagen ${i + 1}`}
+                className="w-[400px] h-[250px] object-cover rounded-lg shadow-md hover:scale-105 transition-transform duration-300 cursor-pointer"
+                onClick={() => setSelectedImage(img)}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Datos principales */}
@@ -146,18 +142,55 @@ export default function PropiedadDetalle() {
         <div className="mt-8">
           <Link
             href="/propiedad"
-            className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-2 rounded shadow-md transition"
+            aria-label="Volver a propiedades"
+            className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-4 py-2 rounded shadow-md transition"
           >
-            ⬅ Volver a propiedades
+            {/* Icono flecha izquierda */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M9.707 14.707a1 1 0 01-1.414 0L3.586 10l4.707-4.707a1 1 0 111.414 1.414L6.414 10l3.293 3.293a1 1 0 010 1.414z"
+                clipRule="evenodd"
+              />
+              <path
+                fillRule="evenodd"
+                d="M16 10a1 1 0 01-1 1H5a1 1 0 010-2h10a1 1 0 011 1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Volver a propiedades
           </Link>
         </div>
+
         {/* Botón historial */}
         <div className="mt-4">
           <Link
-            href={`/propertytrace/${propiedad.id}`}
-            className="bg-slate-900 hover:bg-slate-700 text-white font-semibold px-6 py-2 rounded shadow-md transition"
+            href={`/propertytrace/${id}`}
+            aria-label="Ver historial de la propiedad"
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white font-semibold px-4 py-2 rounded shadow-md transition"
           >
-            📜 Ver historial de la propiedad
+            {/* Icono historial/clock */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v6l4 2" />
+            </svg>
+            Ver historial de la propiedad
           </Link>
         </div>
       </div>

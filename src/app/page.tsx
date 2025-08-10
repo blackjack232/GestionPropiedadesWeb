@@ -127,6 +127,11 @@ export default function HomePage() {
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition transform hover:scale-105"
             >
               <div className="relative group">
+                <div className="relative">
+                  <span className="absolute top-2 left-2 bg-yellow-500 text-black px-3 py-1 rounded-full text-sm font-semibold shadow-md">
+                    ⭐ Destacada
+                  </span>
+                </div>
                 <img
                   src={prop.img}
                   alt={prop.name}

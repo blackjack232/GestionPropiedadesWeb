@@ -1,14 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-
-interface Propiedad {
-  id: string;
-  name: string;
-  address: string;
-  price: number;
-  image: string;
-}
+import { getPropertiesServer } from "@/app/lib/api/property";
+import { Property } from "@/app/models/property";
 
 export default function PropiedadesPage() {
   const [inputs, setInputs] = useState({
@@ -18,64 +12,55 @@ export default function PropiedadesPage() {
     priceMax: "",
   });
 
-  const [filters, setFilters] = useState(inputs);
+  const [loading, setLoading] = useState(false);
+  const [propiedades, setPropiedades] = useState<Property[]>([]);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // 🔥 Datos quemados de ejemplo
-  const propiedades: Propiedad[] = [
-    {
-      id: "1",
-      name: "Casa Moderna en Bogotá",
-      address: "Calle 123 #45-67, Bogotá",
-      price: 1200000000,
-      image:
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
-    },
-    {
-      id: "2",
-      name: "Apartamento en Medellín",
-      address: "Cra 45 #10-20, Medellín",
-      price: 850000000,
-      image:
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
-    },
-    {
-      id: "3",
-      name: "Finca en Nariño",
-      address: "Vereda El Carmen, Nariño",
-      price: 600000000,
-      image:
-        "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=800&q=80",
-    },
-    {
-      id: "4",
-      name: "Penthouse en Cartagena",
-      address: "Bocagrande, Cartagena",
-      price: 2500000000,
-      image:
-        "https://images.unsplash.com/photo-1501183638710-841dd1904471?auto=format&fit=crop&w=800&q=80",
-    },
-  ];
+  const handleBuscar = async (page = 1) => {
+    setLoading(true);
+    try {
+      const response = await getPropertiesServer({
+        name: inputs.name || undefined,
+        address: inputs.address || undefined,
+        minPrice: inputs.priceMin ? Number(inputs.priceMin) : undefined,
+        maxPrice: inputs.priceMax ? Number(inputs.priceMax) : undefined,
+        pageNumber: page,
+        pageSize: 10,
+      });
 
-  // Filtrado solo cuando se presiona el botón
-  const propiedadesFiltradas = propiedades.filter((p) => {
-    const matchesName = p.name
-      .toLowerCase()
-      .includes(filters.name.toLowerCase());
-    const matchesAddress = p.address
-      .toLowerCase()
-      .includes(filters.address.toLowerCase());
-    const matchesPriceMin = filters.priceMin
-      ? p.price >= parseInt(filters.priceMin)
-      : true;
-    const matchesPriceMax = filters.priceMax
-      ? p.price <= parseInt(filters.priceMax)
-      : true;
+      const {
+        pageNumber: pg,
+        totalPages,
+        data: propiedadesArr,
+      } = response.data;
 
-    return matchesName && matchesAddress && matchesPriceMin && matchesPriceMax;
-  });
+      setPropiedades(propiedadesArr);
+      setPageNumber(pg);
+      setTotalPages(totalPages);
+    } catch (err) {
+      console.error("Error cargando propiedades", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleBuscar = () => {
-    setFilters(inputs);
+  // Buscar la primera vez
+  useEffect(() => {
+    handleBuscar(pageNumber);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePrev = () => {
+    if (pageNumber > 1) {
+      handleBuscar(pageNumber - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (pageNumber < totalPages) {
+      handleBuscar(pageNumber + 1);
+    }
   };
 
   return (
@@ -116,58 +101,73 @@ export default function PropiedadesPage() {
         </div>
         <div className="mt-4 flex justify-center">
           <button
-            onClick={handleBuscar}
+            onClick={() => handleBuscar(1)}
             className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-2 rounded shadow-md transition flex items-center gap-2"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z"
-              />
-            </svg>
             Buscar
           </button>
         </div>
       </div>
 
+      {/* Estado de carga */}
+      {loading && <p className="text-center text-gray-500">Cargando...</p>}
+
       {/* Cards */}
-      {propiedadesFiltradas.length === 0 ? (
+      {!loading && propiedades.length === 0 && (
         <p className="text-center text-gray-500">
           No se encontraron propiedades.
         </p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-          {propiedadesFiltradas.map((prop) => (
-            <Link
-              href={`/propiedad/${prop.id}`}
-              key={prop.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-1"
-            >
-              <img
-                src={prop.image}
-                alt={prop.name}
-                className="h-56 w-full object-cover hover:scale-105 transition duration-300"
-              />
-              <div className="p-4">
-                <h3 className="text-lg font-bold text-gray-800">{prop.name}</h3>
-                <p className="text-sm text-gray-500">{prop.address}</p>
-                <p className="text-yellow-500 font-semibold mt-2">
-                  {prop.price.toLocaleString("es-CO", {
-                    style: "currency",
-                    currency: "COP",
-                  })}
-                </p>
-              </div>
-            </Link>
-          ))}
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+        {propiedades.map((prop) => (
+          <Link
+            href={`/propiedad/${prop.idProperty}`}
+            key={prop.idProperty}
+            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-1"
+            onClick={() => {
+              localStorage.setItem("propiedad-seleccionada", JSON.stringify(prop));
+            }}
+          >
+            <img
+              src={prop.imageUrls[0] ?? "/placeholder.jpg"}
+              alt={prop.name}
+              className="h-56 w-full object-cover hover:scale-105 transition duration-300"
+            />
+            <div className="p-4">
+              <h3 className="text-lg font-bold text-gray-800">{prop.name}</h3>
+              <p className="text-sm text-gray-500">{prop.address}</p>
+              <p className="text-yellow-500 font-semibold mt-2">
+                {prop.price.toLocaleString("es-CO", {
+                  style: "currency",
+                  currency: "COP",
+                })}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Paginación */}
+      {!loading && totalPages >= 1 && (
+        <div className="flex justify-center items-center gap-4 mt-8">
+          <button
+            onClick={handlePrev}
+            disabled={pageNumber === 1}
+            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+          >
+            Anterior
+          </button>
+          <span>
+            Página {pageNumber} de {totalPages}
+          </span>
+          <button
+            onClick={handleNext}
+            disabled={pageNumber === totalPages}
+            className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+          >
+            Siguiente
+          </button>
         </div>
       )}
     </div>

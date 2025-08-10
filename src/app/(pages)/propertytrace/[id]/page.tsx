@@ -2,139 +2,109 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
-interface Trace {
-  idPropertyTrace: string;
-  dateSale: string;
-  name: string;
-  value: number;
-  tax: number;
-  idProperty: string;
-}
+import { Trace } from "@/app/models/trace";
+import { getPropertyTrace } from "@/app/lib/api/propertyTrace";
 
 export default function PropertyTracePage() {
   const { id } = useParams();
   const [traces, setTraces] = useState<Trace[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Reiniciar scroll arriba
     window.scrollTo(0, 0);
 
-    // Datos quemados de ejemplo
-    setTraces([
-      {
-        idPropertyTrace: "1",
-        dateSale: "2023-05-01",
-        name: "Venta inicial",
-        value: 1200000000,
-        tax: 50000000,
-        idProperty: id as string,
-      },
-      {
-        idPropertyTrace: "2",
-        dateSale: "2024-01-15",
-        name: "Cambio de precio",
-        value: 1300000000,
-        tax: 0,
-        idProperty: id as string,
-      },
-      {
-        idPropertyTrace: "3",
-        dateSale: "2024-08-10",
-        name: "Arriendo anual",
-        value: 6000000,
-        tax: 0,
-        idProperty: id as string,
-      },
-    ]);
+    if (!id) return;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await getPropertyTrace(id as string);
+        setTraces(data);
+      } catch (err) {
+        setError("No se pudo cargar el historial.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [id]);
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-10">
       <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-lg p-6 text-gray-800">
-        {/* Título */}
         <h1 className="text-3xl font-bold mb-6">
           Historial de la Propiedad #{id}
         </h1>
 
-        {/* Tabla estilizada */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm border-collapse border border-gray-200">
+        {loading && <p>Cargando...</p>}
+        {error && <p className="text-red-500">{error}</p>}
+
+        {!loading && traces.length === 0 && <p>No hay registros.</p>}
+
+        {!loading && traces.length > 0 && (
+          <table className="min-w-full border border-gray-200">
             <thead className="bg-slate-900 text-white">
               <tr>
-                <th className="px-4 py-3 border border-gray-200 text-left rounded-tl-lg">
-                  Fecha de Venta
-                </th>
-                <th className="px-4 py-3 border border-gray-200 text-left">
-                  Nombre
-                </th>
-                <th className="px-4 py-3 border border-gray-200 text-left">
-                  Valor
-                </th>
-                <th className="px-4 py-3 border border-gray-200 text-left">
-                  Impuesto
-                </th>
-                <th className="px-4 py-3 border border-gray-200 text-left rounded-tr-lg">
-                  Total
-                </th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Valor</th>
+                <th className="px-4 py-3">Impuesto</th>
+                <th className="px-4 py-3">Total</th>
               </tr>
             </thead>
             <tbody>
-              {traces.map((t, i) => {
-                const total = t.value + t.tax;
-                return (
-                  <tr
-                    key={i}
-                    className="hover:bg-gray-100 transition-colors duration-150"
-                  >
-                    <td className="px-4 py-3 border border-gray-200">
-                      {new Date(t.dateSale).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 font-medium">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          t.name.toLowerCase().includes("venta")
-                            ? "bg-green-100 text-green-700"
-                            : t.name.toLowerCase().includes("arriendo")
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {t.name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 text-green-600 font-semibold">
-                      {t.value.toLocaleString("es-CO", {
-                        style: "currency",
-                        currency: "COP",
-                      })}
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 text-red-500 font-semibold">
-                      {t.tax.toLocaleString("es-CO", {
-                        style: "currency",
-                        currency: "COP",
-                      })}
-                    </td>
-                    <td className="px-4 py-3 border border-gray-200 font-bold">
-                      {total.toLocaleString("es-CO", {
-                        style: "currency",
-                        currency: "COP",
-                      })}
-                    </td>
-                  </tr>
-                );
-              })}
+              {traces.map((t) => (
+                <tr key={t.idPropertyTrace}>
+                  <td className="px-4 py-3">
+                    {new Date(t.dateSale).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3">{t.name}</td>
+                  <td className="px-4 py-3">
+                    {t.value.toLocaleString("es-CO", {
+                      style: "currency",
+                      currency: "COP",
+                    })}
+                  </td>
+                  <td className="px-4 py-3">
+                    {t.tax.toLocaleString("es-CO", {
+                      style: "currency",
+                      currency: "COP",
+                    })}
+                  </td>
+                  <td className="px-4 py-3 font-bold">
+                    {(t.value + t.tax).toLocaleString("es-CO", {
+                      style: "currency",
+                      currency: "COP",
+                    })}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-        </div>
+        )}
 
-        {/* Botón volver */}
         <div className="mt-8">
           <Link
             href={`/propiedad/${id}`}
-            className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-2 rounded shadow-md transition"
+            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-2 rounded shadow-md transition"
           >
-            ⬅ Volver al detalle
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 19.5L8.25 12l7.5-7.5"
+              />
+            </svg>
+            Volver al detalle
           </Link>
         </div>
       </div>
